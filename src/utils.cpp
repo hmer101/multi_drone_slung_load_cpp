@@ -248,6 +248,19 @@ namespace utils {
         return eigen_rotMat;
     }
 
+    tf2::Quaternion convert_quaternion_eigen_to_tf(const Eigen::Quaterniond& q){
+        // Create a tf2::Quaternion and set its components based on Eigen::Quaterniond
+        tf2::Quaternion q_tf2;
+        q_tf2.setValue(q.x(), q.y(), q.z(), q.w());  // tf2 uses (x, y, z, w) format
 
+        return q_tf2;
+    }
+
+    Eigen::Quaterniond convert_quaternion_tf_to_eigen(const tf2::Quaternion& q) {
+        // Create an Eigen::Quaterniond and set its components based on tf2::Quaternion
+        Eigen::Quaterniond q_eigen(q.w(), q.x(), q.y(), q.z());  // Eigen uses (w, x, y, z) format
+
+        return q_eigen;
+    }
 
 } // namespace utils

@@ -44,6 +44,8 @@ namespace utils {
     droneState::State convert_tf_stamped_msg_to_state(const geometry_msgs::msg::TransformStamped &pose_msg, std::string frame, droneState::CS_type cs_type, Eigen::Vector3d vel = Eigen::Vector3d(0.0, 0.0, 0.0));
     //tf2::Quaternion convert_rvec_to_quaternion(const cv::Vec3d &rvec);
     Eigen::Matrix3d convert_rvec_to_rotmat(const Eigen::Vector3d &rvec);
+    tf2::Quaternion convert_quaternion_eigen_to_tf(const Eigen::Quaterniond &q);
+    Eigen::Quaterniond convert_quaternion_tf_to_eigen(const tf2::Quaternion &q);
 }
 
 #endif // UTILS_H

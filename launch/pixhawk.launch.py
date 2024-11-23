@@ -16,12 +16,18 @@ def generate_launch_description():
     launch_arg_drone_id = DeclareLaunchArgument(
       'id', default_value=str(DEFAULT_ID)
     )
+
+    launch_arg_device_type = DeclareLaunchArgument(
+      'device_type', default_value="drone"
+    )
+
     launch_arg_sim_phys = DeclareLaunchArgument(
       'env', default_value=str(DEFAULT_ENV)
     )
 
     # Get arguments  
     id = LaunchConfiguration('id')
+    device_type = LaunchConfiguration('device_type')
 
     env = DEFAULT_ENV
     for arg in sys.argv:
@@ -47,17 +53,16 @@ def generate_launch_description():
     # Set up launch description to launch measurement node with arguments
     launch_description = [
         launch_arg_drone_id,
+        launch_arg_device_type,
         launch_arg_sim_phys,
         Node(
             package='multi_drone_slung_load_cpp',
             executable='pixhawk',
             namespace=PythonExpression(["'/px4_' + str(", id, ")"]),
-            name='pixhawk',
+            name=PythonExpression(["'pixhawk_", device_type, "_' + str(", id, ")"]),
             output='screen',
             parameters=[config]
         )]
 
     ## LAUNCH
     return LaunchDescription(launch_description)
-
-    
