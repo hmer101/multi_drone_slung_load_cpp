@@ -119,6 +119,41 @@ namespace utils {
         return state2;
     }
     
+    droneState::State update_ground_truth_pose(
+        const geometry_msgs::msg::PoseArray &gt_msg,
+        const rclcpp::Time &time,
+        const std::string &name_frame_child,
+        tf2_ros::TransformBroadcaster &tf_broadcaster,
+        size_t pose_ind, 
+        Pixhawk *pixhawk_pose
+    ) {
+        droneState::State state_obj_gt("ground_truth", droneState::CS_type::XYZ);
+        geometry_msgs::msg::Pose drone_pose_gt;
+
+        // If pose_ind is not -1, extract the pose from the array
+        //if (pose_ind != -1) {
+        drone_pose_gt = utils::extract_pose_from_pose_array_msg(gt_msg, pose_ind);
+        // } else {
+        //     // Otherwise use it directly
+        //     drone_pose_gt = gt_msg->pose;
+        // }
+
+        // Update state with position and orientation
+        state_obj_gt.setPos(Eigen::Vector3d(drone_pose_gt.position.x, drone_pose_gt.position.y, drone_pose_gt.position.z));
+        Eigen::Quaterniond att_q(drone_pose_gt.orientation.w, drone_pose_gt.orientation.x, drone_pose_gt.orientation.y, drone_pose_gt.orientation.z);
+        state_obj_gt.setAtt(utils::convert_quaternion_eigen_to_tf(att_q));
+
+        // Publish the transform (broadcast TF)
+        utils::broadcast_tf(time, "ground_truth", name_frame_child + "_gt", state_obj_gt.getPos(), utils::convert_quaternion_tf_to_eigen(state_obj_gt.getAtt()), tf_broadcaster);
+
+        // If pixhawk_pose is provided, set the GPS home flag
+        if (pixhawk_pose != nullptr) {
+            pixhawk_pose->set_flag_gps_home();
+        }
+
+        return state_obj_gt;
+    }
+
     // MATH
     // Helper function to calculate the trace of a 3x3 matrix
     float getTrace(const tf2::Matrix3x3& matrix) {
@@ -150,6 +185,18 @@ namespace utils {
         return result;
     }
     
+
+    // OTHER HANDLING
+    geometry_msgs::msg::Pose extract_pose_from_pose_array_msg(const geometry_msgs::msg::PoseArray &pose_array, size_t index) {
+        // Check if the index is valid
+        if (index >= pose_array.poses.size()) {
+            throw std::out_of_range("Index is out of bounds for the PoseArray.");
+        }
+        
+        // Return the pose at the given index
+        return pose_array.poses[index];
+    }
+
     // CONVERSIONS
     Eigen::Vector3d convert_vec_floats_to_eigen(const std::vector<float>& float_vector) {
         Eigen::Vector3d eigen_vector;
@@ -262,5 +309,61 @@ namespace utils {
 
         return q_eigen;
     }
+
+    // PX4
+    int extract_instance_from_connection(const rclcpp::Publisher<px4_msgs::msg::VehicleCommand>::SharedPtr& pub_vehicle_command) {
+        // Get the topic name from the publisher
+        std::string topic_name = pub_vehicle_command->get_topic_name();
+
+        // Split the topic name based on '/' and extract the namespace (second part)
+        size_t first_slash = topic_name.find('/');
+        size_t second_slash = topic_name.find('/', first_slash + 1);
+        std::string namespace_str = topic_name.substr(first_slash + 1, second_slash - first_slash - 1);
+
+        // Split the namespace by '_' and extract the instance number (second part)
+        size_t underscore_pos = namespace_str.find('_');
+        std::string instance_str = namespace_str.substr(underscore_pos + 1);
+
+        // Convert to integer and return
+        return std::stoi(instance_str);
+    }
+
+    // Send a command to Pixhawk
+    void publish_vehicle_command(uint32_t command, const rclcpp::Publisher<px4_msgs::msg::VehicleCommand>::SharedPtr& pub_vehicle_command,
+                                 const rclcpp::Time& timestamp, double param1, double param2, double param3, double param4, double param5, double param6, double param7) {
+        
+        // Extract the instance number
+        uint8_t instance_num = utils::extract_instance_from_connection(pub_vehicle_command) + 1;
+
+        // Create the VehicleCommand message
+        px4_msgs::msg::VehicleCommand msg;
+        msg.command = command;
+        msg.param1 = param1;
+        msg.param2 = param2;
+        msg.param3 = param3;
+        msg.param4 = param4;
+        msg.param5 = param5;
+        msg.param6 = param6;
+        msg.param7 = param7;
+
+        // Set the target system to instance_num (as per PX4 documentation)
+        msg.target_system = instance_num;
+        msg.target_component = 1;  // Typically 1 for vehicle command
+        msg.source_system = 1;     // Typically 1 for source system
+        msg.source_component = 1;  // Typically 1 for source component
+        msg.from_external = true;  // Mark as external
+        msg.timestamp = static_cast<unsigned long>(timestamp.nanoseconds() / 1000);
+
+        // Publish the message
+        pub_vehicle_command->publish(msg);
+    }
+
+    // Set GPS origin
+    void set_origin(const rclcpp::Publisher<px4_msgs::msg::VehicleCommand>::SharedPtr& pub_vehicle_command, const rclcpp::Time& timestamp, double lat, double lon, double alt) {
+        utils::publish_vehicle_command(px4_msgs::msg::VehicleCommand::VEHICLE_CMD_SET_GPS_GLOBAL_ORIGIN,
+                                pub_vehicle_command, timestamp, 0.0, 0.0, 0.0, 0.0, lat, lon, alt);
+    }
+
+
 
 } // namespace utils

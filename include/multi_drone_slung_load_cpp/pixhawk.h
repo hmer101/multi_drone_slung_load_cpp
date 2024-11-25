@@ -9,21 +9,27 @@
 
 //#include <tf2_ros/transform_listener.h>
 
-//#include <tf2_geometry_msgs/tf2_geometry_msgs.hpp>
+#include <geometry_msgs/msg/pose_array.hpp>
 //#include "std_msgs/msg/string.hpp"
 
-//#include "multi_drone_slung_load_interfaces/msg/phase.hpp"
 #include "multi_drone_slung_load_cpp/State.h"
-// #include "multi_drone_slung_load_cpp/utils.h"
 
 #include <px4_msgs/msg/vehicle_attitude.hpp>
 #include <px4_msgs/msg/vehicle_local_position.hpp>
+#include <px4_msgs/msg/vehicle_global_position.hpp>
+#include <px4_msgs/msg/vehicle_command.hpp>
+
+#include "multi_drone_slung_load_interfaces/msg/phase.hpp"
+#include "multi_drone_slung_load_interfaces/msg/global_pose.hpp"
 
 
 class Pixhawk : public rclcpp::Node {
 public:
     Pixhawk();
     //~Pixhawk();
+
+    // HELPER FUNCTIONS
+    void set_flag_gps_home();
 
 private:
     // PARAMETERS
@@ -32,9 +38,11 @@ private:
 
     std::string name_;
     std::string env_;
+    std::string device_type_;
     std::string load_pose_type_;
     bool evaluate_;
     std::string gt_source_;
+    int num_cameras_;
 
     // STATES
     droneState::State global_origin_state_;
@@ -44,6 +52,10 @@ private:
     droneState::State initial_local_state_;
     droneState::State local_state_;
     droneState::State gt_state_;
+
+    // VARIABLES
+    //multi_drone_slung_load_interfaces::msg::Phase current_phase_;
+    uint8_t current_phase_;
 
     // TFS
     std::unique_ptr<tf2_ros::TransformBroadcaster> tf_broadcaster_;
@@ -60,13 +72,27 @@ private:
     bool flag_local_init_pose_set_;
 
 
+    // PUBLISHERS
+    rclcpp::Publisher<px4_msgs::msg::VehicleCommand>::SharedPtr pub_vehicle_command_;
+    rclcpp::Publisher<multi_drone_slung_load_interfaces::msg::GlobalPose>::SharedPtr pub_global_init_pose_;
+
     // SUBSCRIBERS
+    rclcpp::Subscription<multi_drone_slung_load_interfaces::msg::Phase>::SharedPtr sub_vehicle_phase;
+    rclcpp::Subscription<geometry_msgs::msg::PoseArray>::SharedPtr sub_pose_gt_;
+
     rclcpp::Subscription<px4_msgs::msg::VehicleAttitude>::SharedPtr sub_attitude_;
     rclcpp::Subscription<px4_msgs::msg::VehicleLocalPosition>::SharedPtr sub_local_pos_;
+    rclcpp::Subscription<px4_msgs::msg::VehicleGlobalPosition>::SharedPtr sub_global_pos_;
 
     // CALLBACKS
+    void clbk_change_phase(const multi_drone_slung_load_interfaces::msg::Phase::SharedPtr msg);
     void clbk_vehicle_attitude(const px4_msgs::msg::VehicleAttitude::SharedPtr msg);
     void clbk_vehicle_local_position(const px4_msgs::msg::VehicleLocalPosition::SharedPtr msg);
+    void clbk_vehicle_global_position(const px4_msgs::msg::VehicleGlobalPosition::SharedPtr msg);
+    void clbk_gt(const geometry_msgs::msg::PoseArray msg);
+
+    // HELPER FUNCTIONS
+    void reset();
 };
 
 #endif // PIXHAWK_H

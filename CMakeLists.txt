@@ -1,6 +1,9 @@
 cmake_minimum_required(VERSION 3.8)
 project(multi_drone_slung_load_cpp)
 
+set(CMAKE_CXX_STANDARD 14)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
 if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
   add_compile_options(-Wall -Wextra -Wpedantic)
 endif()
@@ -15,6 +18,7 @@ find_package(sensor_msgs REQUIRED)
 #find_package(cv_bridge REQUIRED)
 #find_package(image_transport REQUIRED)
 #find_package(OpenCV REQUIRED)
+find_package(geometry_msgs REQUIRED)
 find_package(tf2_geometry_msgs REQUIRED)
 find_package(tf2_eigen REQUIRED)
 find_package(px4_msgs REQUIRED)
@@ -69,9 +73,9 @@ target_link_libraries(State
 # )
 
 ament_target_dependencies(State rclcpp tf2_geometry_msgs tf2 Eigen3)
-ament_target_dependencies(utils rclcpp tf2_ros tf2_eigen Eigen3 std_msgs tf2_geometry_msgs) #OpenCV
+ament_target_dependencies(utils rclcpp tf2_ros tf2_eigen Eigen3 std_msgs geometry_msgs tf2_geometry_msgs px4_msgs multi_drone_slung_load_interfaces) #OpenCV
 ament_target_dependencies(frame_transforms Eigen3 tf2_geometry_msgs sensor_msgs)
-ament_target_dependencies(pixhawk rclcpp px4_msgs) # Eigen3 std_msgs sensor_msgs cv_bridge image_transport OpenCV tf2_geometry_msgs multi_drone_slung_load_interfaces)
+ament_target_dependencies(pixhawk rclcpp geometry_msgs px4_msgs multi_drone_slung_load_interfaces) # Eigen3 std_msgs sensor_msgs cv_bridge image_transport OpenCV tf2_geometry_msgs multi_drone_slung_load_interfaces)
 #ament_target_dependencies(logger rclcpp multi_drone_slung_load_interfaces) #std_msgs tf2_geometry_msgs
 
 # Install the libraries and executables
