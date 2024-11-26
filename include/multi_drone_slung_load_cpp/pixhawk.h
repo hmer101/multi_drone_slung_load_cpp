@@ -38,11 +38,13 @@ private:
 
     std::string name_;
     std::string env_;
+    std::string frame_system_;
     std::string device_type_;
     std::string load_pose_type_;
     bool evaluate_;
     std::string gt_source_;
     int num_cameras_;
+    std::vector<double> mocap_origin_lla_;
 
     // STATES
     droneState::State global_origin_state_;

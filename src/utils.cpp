@@ -124,8 +124,8 @@ namespace utils {
         const rclcpp::Time &time,
         const std::string &name_frame_child,
         tf2_ros::TransformBroadcaster &tf_broadcaster,
-        size_t pose_ind, 
-        Pixhawk *pixhawk_pose
+        size_t pose_ind//, 
+        //Pixhawk *pixhawk_pose
     ) {
         droneState::State state_obj_gt("ground_truth", droneState::CS_type::XYZ);
         geometry_msgs::msg::Pose drone_pose_gt;
@@ -147,9 +147,9 @@ namespace utils {
         utils::broadcast_tf(time, "ground_truth", name_frame_child + "_gt", state_obj_gt.getPos(), utils::convert_quaternion_tf_to_eigen(state_obj_gt.getAtt()), tf_broadcaster);
 
         // If pixhawk_pose is provided, set the GPS home flag
-        if (pixhawk_pose != nullptr) {
-            pixhawk_pose->set_flag_gps_home();
-        }
+        // if (pixhawk_pose != nullptr) {
+        //     pixhawk_pose->set_flag_gps_home();
+        // }
 
         return state_obj_gt;
     }
@@ -364,6 +364,42 @@ namespace utils {
                                 pub_vehicle_command, timestamp, 0.0, 0.0, 0.0, 0.0, lat, lon, alt);
     }
 
+    // Send offboard heartbeat signal
+    void publish_offboard_control_heartbeat_signal(
+        rclcpp::Publisher<px4_msgs::msg::OffboardControlMode>::SharedPtr pub_offboard_mode, 
+        const std::string& what_control, 
+        uint64_t timestamp)
+    {
+        // Create the message
+        px4_msgs::msg::OffboardControlMode msg;
+
+        // Set all control flags to false initially
+        msg.position = false;
+        msg.velocity = false;
+        msg.acceleration = false;
+        msg.attitude = false;
+        msg.body_rate = false;
+        msg.thrust_and_torque = false;
+        msg.direct_actuator = false;
+
+        // Set the control flag based on what_control
+        if (what_control == "pos") {
+            msg.position = true;
+        } else if (what_control == "vel") {
+            msg.velocity = true;
+        } else if (what_control == "accel") {
+            msg.acceleration = true;
+        }
+
+        // Set the timestamp
+        msg.timestamp = timestamp;
+
+        // Publish the message
+        pub_offboard_mode->publish(msg);
+    }
+
+
+    
 
 
 } // namespace utils

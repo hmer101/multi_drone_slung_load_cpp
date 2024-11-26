@@ -18,9 +18,10 @@
 #include "std_msgs/msg/string.hpp"
 
 #include "multi_drone_slung_load_cpp/State.h"
-#include "multi_drone_slung_load_cpp/pixhawk.h"
+//#include "multi_drone_slung_load_cpp/pixhawk.h"
 
 #include <px4_msgs/msg/vehicle_command.hpp>
+#include <px4_msgs/msg/offboard_control_mode.hpp>
 
 
 namespace utils {
@@ -34,7 +35,7 @@ namespace utils {
     //std::shared_ptr<State> transform_frames(const State& state, const std::string& frame2_name, tf2_ros::Buffer& tf_buffer, rclcpp::Logger logger);
     std::shared_ptr<droneState::State> transform_frames(const droneState::State &state, const std::string &frame2_name, tf2_ros::Buffer &tf_buffer, rclcpp::Logger logger, droneState::CS_type cs_out_type = droneState::CS_type::XYZ);
 
-    droneState::State update_ground_truth_pose(const geometry_msgs::msg::PoseArray &gt_msg, const rclcpp::Time &time, const std::string &name_frame_child, tf2_ros::TransformBroadcaster &tf_broadcaster, size_t pose_ind = 0, Pixhawk *pixhawk_pose = nullptr);
+    droneState::State update_ground_truth_pose(const geometry_msgs::msg::PoseArray &gt_msg, const rclcpp::Time &time, const std::string &name_frame_child, tf2_ros::TransformBroadcaster &tf_broadcaster, size_t pose_ind = 0); //, Pixhawk *pixhawk_pose = nullptr);
 
     // MATH
     float getTrace(const tf2::Matrix3x3 &matrix);
@@ -60,6 +61,9 @@ namespace utils {
     void publish_vehicle_command(uint16_t command, const rclcpp::Publisher<px4_msgs::msg::VehicleCommand>::SharedPtr &pub_vehicle_command,
                                  const rclcpp::Time &timestamp, double param1 = 0.0, double param2 = 0.0, double param3 = 0.0, double param4 = 0.0, double param5 = 0.0, double param6 = 0.0, double param7 = 0.0);
     void set_origin(const rclcpp::Publisher<px4_msgs::msg::VehicleCommand>::SharedPtr& pub_vehicle_command, const rclcpp::Time &timestamp, double lat, double lon, double alt);
+
+    void publish_offboard_control_heartbeat_signal(rclcpp::Publisher<px4_msgs::msg::OffboardControlMode>::SharedPtr pub_offboard_mode, const std::string &what_control, uint64_t timestamp);
+
 }
 
 #endif // UTILS_H

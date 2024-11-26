@@ -28,9 +28,12 @@ Pixhawk::Pixhawk() : Node("pixhawk", rclcpp::NodeOptions().use_global_arguments(
         this->name_ = this->device_type_ + std::to_string(this->id_);
     }
 
-    // PARAMETERS
+    // PARAMETERS 
     this->declare_parameter<std::string>("env", "phys");
     this->get_parameter("env", this->env_);
+
+    this->declare_parameter<std::string>("frame_system", "mocap");
+    this->get_parameter("frame_system", this->frame_system_);
 
     this->declare_parameter<std::string>("load_pose_type", "ground_truth");
     this->get_parameter("load_pose_type", this->load_pose_type_);
@@ -43,6 +46,9 @@ Pixhawk::Pixhawk() : Node("pixhawk", rclcpp::NodeOptions().use_global_arguments(
 
     this->declare_parameter<int>("num_cameras", 0);
     this->get_parameter("num_cameras", this->num_cameras_);
+
+    this->declare_parameter<std::vector<double>>("mocap_origin_lla", {42.360556, -71.093056, 10.0});
+    this->get_parameter("mocap_origin_lla", this->mocap_origin_lla_);
     
     // STATES
     this->global_origin_state_ = droneState::State("globe", droneState::CS_type::LLA);
@@ -102,7 +108,7 @@ Pixhawk::Pixhawk() : Node("pixhawk", rclcpp::NodeOptions().use_global_arguments(
     qos_profile_gz.durability(rclcpp::DurabilityPolicy::Volatile);
     qos_profile_gz.history(rclcpp::HistoryPolicy::KeepLast);
 
-    rclcpp::QoS qos_profile_drone_system = rclcpp::SensorDataQoS();
+    rclcpp::QoS qos_profile_drone_system = rclcpp::SensorDataQoS(); 
     
 
     // PUBLISHERS
@@ -206,6 +212,10 @@ void Pixhawk::clbk_vehicle_local_position(const px4_msgs::msg::VehicleLocalPosit
             utils::broadcast_tf(this->get_clock()->now(), this->name_ + "_init", this->name_ + "_gt", 
                                  this->local_state_.getPos(), utils::convert_quaternion_tf_to_eigen(this->local_state_.getAtt()), *this->tf_broadcaster_);
         }
+        // else if(this->frame_system_ == "mocap" && !this->flag_gps_home_set_){ //Set the mocap origin if it hasn't been set yet. TODO: Ensure this doesn't cause problems for not centralized version
+        //     // Set the GPS home for the mocap system
+        //     utils::set_origin(this->pub_vehicle_command_, this->get_clock()->now(), this->mocap_origin_lla_[0], this->mocap_origin_lla_[1], this->mocap_origin_lla_[2]);
+        // }
     }
 }
 
