@@ -21,6 +21,7 @@
 
 #include "multi_drone_slung_load_interfaces/msg/phase.hpp"
 #include "multi_drone_slung_load_interfaces/msg/global_pose.hpp"
+#include "multi_drone_slung_load_interfaces/msg/pixhawk_status.hpp"
 
 
 class Pixhawk : public rclcpp::Node {
@@ -30,6 +31,8 @@ public:
 
     // HELPER FUNCTIONS
     void set_flag_gps_home();
+    void set_flag_local_init_pose();
+    void set_flag_global_init_att();
 
 private:
     // PARAMETERS
@@ -77,6 +80,7 @@ private:
     // PUBLISHERS
     rclcpp::Publisher<px4_msgs::msg::VehicleCommand>::SharedPtr pub_vehicle_command_;
     rclcpp::Publisher<multi_drone_slung_load_interfaces::msg::GlobalPose>::SharedPtr pub_global_init_pose_;
+    rclcpp::Publisher<multi_drone_slung_load_interfaces::msg::PixhawkStatus>::SharedPtr pub_pixhawk_status_;
 
     // SUBSCRIBERS
     rclcpp::Subscription<multi_drone_slung_load_interfaces::msg::Phase>::SharedPtr sub_vehicle_phase;
@@ -95,6 +99,7 @@ private:
 
     // HELPER FUNCTIONS
     void reset();
+    void publish_pixhawk_status();
 };
 
 #endif // PIXHAWK_H

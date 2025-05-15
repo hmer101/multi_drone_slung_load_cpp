@@ -118,6 +118,9 @@ Pixhawk::Pixhawk() : Node("pixhawk", rclcpp::NodeOptions().use_global_arguments(
     this->pub_global_init_pose_ = this->create_publisher<multi_drone_slung_load_interfaces::msg::GlobalPose>(
         this->ns_ + "/out/global_init_pose", qos_profile_latched);
 
+    this->pub_pixhawk_status_ = this->create_publisher<multi_drone_slung_load_interfaces::msg::PixhawkStatus>(
+        this->ns_ + "/out/pixhawk_status", qos_profile_latched);
+
     // SUBSCRIBERS
     // DRONE 
     this->sub_vehicle_phase = this->create_subscription<multi_drone_slung_load_interfaces::msg::Phase>(
@@ -186,7 +189,7 @@ void Pixhawk::clbk_vehicle_attitude(const px4_msgs::msg::VehicleAttitude::Shared
     if (!this->flag_gps_home_set_ || !this->flag_global_init_att_set_) {
         // Set the initial attitude as the current attitude
         this->initial_global_state_.setAtt(this->local_state_.getAtt());
-        this->flag_global_init_att_set_ = true;
+        this->set_flag_global_init_att();
 
         // Set initial local state for mocap
         this->initial_local_state_.setPos(this->local_state_.getPos());
@@ -273,15 +276,47 @@ void Pixhawk::clbk_gt(const geometry_msgs::msg::PoseArray msg) {
     this->gt_state_ = utils::update_ground_truth_pose(msg, this->get_clock()->now(), this->name_, *(this->tf_broadcaster_), pose_ind = pose_ind);
 }
 
+
+// HELPER FUNCTIONS
 void Pixhawk::set_flag_gps_home(){
     this->flag_gps_home_set_ = true;
+
+    // Publish the status
+    this->publish_pixhawk_status();
+}
+
+void Pixhawk::set_flag_global_init_att(){
+    this->flag_global_init_att_set_ = true;
+
+    // Publish the status
+    this->publish_pixhawk_status();
+}
+
+void Pixhawk::set_flag_local_init_pose(){
+    this->flag_local_init_pose_set_ = true;
+
+    // Publish the status
+    this->publish_pixhawk_status();
 }
 
 void Pixhawk::reset(){
     this->flag_gps_home_set_ = false;
     this->flag_local_init_pose_set_ = false;
     this->flag_global_init_att_set_ = false;
+
+    // Publish the status
+    this->publish_pixhawk_status();
 }
+
+void Pixhawk::publish_pixhawk_status() {
+    // Publish the status
+    multi_drone_slung_load_interfaces::msg::PixhawkStatus msg_pixhawk_status;
+    msg_pixhawk_status.gps_home_set = this->flag_gps_home_set_;
+    msg_pixhawk_status.local_init_pose_set = this->flag_local_init_pose_set_;
+    msg_pixhawk_status.global_init_att_set = this->flag_global_init_att_set_;
+    this->pub_pixhawk_status_->publish(msg_pixhawk_status);
+}
+
 
 int main(int argc, char *argv[]) {
     rclcpp::init(argc, argv);
