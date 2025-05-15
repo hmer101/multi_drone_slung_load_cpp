@@ -18,6 +18,8 @@
 #include <px4_msgs/msg/vehicle_local_position.hpp>
 #include <px4_msgs/msg/vehicle_global_position.hpp>
 #include <px4_msgs/msg/vehicle_command.hpp>
+#include <geometry_msgs/msg/point.hpp> 
+#include <geometry_msgs/msg/quaternion.hpp>
 
 #include "multi_drone_slung_load_interfaces/msg/phase.hpp"
 #include "multi_drone_slung_load_interfaces/msg/global_pose.hpp"
@@ -30,9 +32,11 @@ public:
     //~Pixhawk();
 
     // HELPER FUNCTIONS
-    void set_flag_gps_home();
-    void set_flag_local_init_pose();
-    void set_flag_global_init_att();
+    // void set_flag_gps_home();
+    // void set_flag_local_init_pose();
+    // void set_flag_global_init_att();
+    void set_flag(bool& flag);
+    void unset_flag(bool& flag);
 
 private:
     // PARAMETERS
@@ -47,6 +51,7 @@ private:
     bool evaluate_;
     std::string gt_source_;
     int num_cameras_;
+    int first_drone_num_;
     std::vector<double> mocap_origin_lla_;
 
     // STATES
@@ -73,6 +78,7 @@ private:
 
     // FLAGS
     bool flag_gps_home_set_;
+    bool flag_global_origin_set_;
     bool flag_global_init_att_set_;
     bool flag_local_init_pose_set_;
 
@@ -89,15 +95,19 @@ private:
     rclcpp::Subscription<px4_msgs::msg::VehicleAttitude>::SharedPtr sub_attitude_;
     rclcpp::Subscription<px4_msgs::msg::VehicleLocalPosition>::SharedPtr sub_local_pos_;
     rclcpp::Subscription<px4_msgs::msg::VehicleGlobalPosition>::SharedPtr sub_global_pos_;
+    rclcpp::Subscription<multi_drone_slung_load_interfaces::msg::GlobalPose>::SharedPtr sub_global_origin_;
 
     // CALLBACKS
     void clbk_change_phase(const multi_drone_slung_load_interfaces::msg::Phase::SharedPtr msg);
     void clbk_vehicle_attitude(const px4_msgs::msg::VehicleAttitude::SharedPtr msg);
     void clbk_vehicle_local_position(const px4_msgs::msg::VehicleLocalPosition::SharedPtr msg);
     void clbk_vehicle_global_position(const px4_msgs::msg::VehicleGlobalPosition::SharedPtr msg);
+    void clbk_global_origin(const multi_drone_slung_load_interfaces::msg::GlobalPose msg);
     void clbk_gt(const geometry_msgs::msg::PoseArray msg);
 
     // HELPER FUNCTIONS
+    geometry_msgs::msg::Point toMsg(const Eigen::Vector3d& vec);
+    geometry_msgs::msg::Quaternion toMsg(const tf2::Quaternion& q);
     void reset();
     void publish_pixhawk_status();
 };

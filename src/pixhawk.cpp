@@ -47,6 +47,9 @@ Pixhawk::Pixhawk() : Node("pixhawk", rclcpp::NodeOptions().use_global_arguments(
     this->declare_parameter<int>("num_cameras", 0);
     this->get_parameter("num_cameras", this->num_cameras_);
 
+    this->declare_parameter<int>("first_drone_num", 1);
+    this->get_parameter("first_drone_num", this->first_drone_num_);
+
     this->declare_parameter<std::vector<double>>("mocap_origin_lla", {42.360556, -71.093056, 10.0});
     this->get_parameter("mocap_origin_lla", this->mocap_origin_lla_);
     
@@ -71,8 +74,11 @@ Pixhawk::Pixhawk() : Node("pixhawk", rclcpp::NodeOptions().use_global_arguments(
 
     // FLAGS
     this->flag_gps_home_set_ = false; // GPS home set when vehicle armed
+    this->flag_global_origin_set_ = false; // Global origin set when the first drone publishes its global pose
     this->flag_global_init_att_set_ = false;
     this->flag_local_init_pose_set_ = false;
+
+    //this->reset();
 
 
     // ROS2
@@ -167,6 +173,15 @@ Pixhawk::Pixhawk() : Node("pixhawk", rclcpp::NodeOptions().use_global_arguments(
         );
     }
 
+    // If non-mocap, subscribe to the first drone to get the global origin (if this is not it)
+    if(this->gt_source_ != "mocap" && ((this->device_type_ == "drone" && this->id_ != this->first_drone_num_) || (this->device_type_ == "load"))){    
+        this->sub_global_origin_ = this->create_subscription<multi_drone_slung_load_interfaces::msg::GlobalPose>(
+            "/px4_" + std::to_string(this->first_drone_num_) + "/out/global_init_pose", 
+            qos_profile_latched,
+            std::bind(&Pixhawk::clbk_global_origin, this, std::placeholders::_1)
+        );
+    }
+
     // Print info
     RCLCPP_INFO(this->get_logger(), "PIXHAWK NODE %d", this->id_);
 
@@ -189,7 +204,8 @@ void Pixhawk::clbk_vehicle_attitude(const px4_msgs::msg::VehicleAttitude::Shared
     if (!this->flag_gps_home_set_ || !this->flag_global_init_att_set_) {
         // Set the initial attitude as the current attitude
         this->initial_global_state_.setAtt(this->local_state_.getAtt());
-        this->set_flag_global_init_att();
+        //this->set_flag_global_init_att();
+        this->set_flag(this->flag_global_init_att_set_);
 
         // Set initial local state for mocap
         this->initial_local_state_.setPos(this->local_state_.getPos());
@@ -260,15 +276,34 @@ void Pixhawk::clbk_vehicle_global_position(const px4_msgs::msg::VehicleGlobalPos
         // }
 
         // Set the flag to indicate that GPS home has been set
-        this->set_flag_gps_home();
+        //this->set_flag_gps_home();
+        this->set_flag(this->flag_gps_home_set_);
     }
 }
+
+void Pixhawk::clbk_global_origin(const multi_drone_slung_load_interfaces::msg::GlobalPose msg) {
+    this->global_origin_state_.setPos(Eigen::Vector3d(msg.global_pos.lat, msg.global_pos.lon, msg.global_pos.alt));
+
+    
+    //JUST UPDATED THISSSSSSS HEREEEEEE
+    this->global_origin_state_.setAtt(tf2::Quaternion(msg.global_att.q[3], msg.global_att.q[0], msg.global_att.q[1], msg.global_att.q[2])); //msg.global_att.q[0], msg.global_att.q[1], msg.global_att.q[2], msg.global_att.q[3]));
+    
+
+
+
+    RCLCPP_INFO(this->get_logger(), "UPDATED GLOBAL ORIGIN: %f %f %f", this->global_origin_state_.getPos()[0], this->global_origin_state_.getPos()[1], this->global_origin_state_.getPos()[2]);
+
+    // Global origin updated - must update local initial poses
+    this->set_flag(this->flag_global_origin_set_);
+    this->unset_flag(this->flag_local_init_pose_set_);
+}
+
 
 void Pixhawk::clbk_gt(const geometry_msgs::msg::PoseArray msg) {
     // Ground truth pose index changes depending on the device and the number of cameras
     size_t pose_ind = 2; // For drones in simulation
 
-    if(this->device_type_ == "load" || this->num_cameras_ == 0){ // For load and when no cameras are used
+    if(this->device_type_ == "load"){  //|| this->num_cameras_ == 0){ // For load and when no cameras are used
         pose_ind = 1;
     }
 
@@ -278,24 +313,54 @@ void Pixhawk::clbk_gt(const geometry_msgs::msg::PoseArray msg) {
 
 
 // HELPER FUNCTIONS
-void Pixhawk::set_flag_gps_home(){
-    this->flag_gps_home_set_ = true;
+// void Pixhawk::set_flag_gps_home(){
+//     this->flag_gps_home_set_ = true;
 
-    // Publish the status
+//     // Publish the status
+//     this->publish_pixhawk_status();
+// }
+
+// void Pixhawk::set_flag_global_init_att(){
+//     this->flag_global_init_att_set_ = true;
+
+//     // Publish the status
+//     this->publish_pixhawk_status();
+// }
+
+// void Pixhawk::set_flag_local_init_pose(){
+//     this->flag_local_init_pose_set_ = true;
+
+//     // Publish the status
+//     this->publish_pixhawk_status();
+// }
+
+
+geometry_msgs::msg::Point Pixhawk::toMsg(const Eigen::Vector3d& vec) {
+    geometry_msgs::msg::Point msg;
+    msg.x = vec.x();
+    msg.y = vec.y();
+    msg.z = vec.z();
+
+    return msg;
+}
+
+geometry_msgs::msg::Quaternion Pixhawk::toMsg(const tf2::Quaternion& q) {
+    geometry_msgs::msg::Quaternion msg;
+    msg.x = q.x();
+    msg.y = q.y();
+    msg.z = q.z();
+    msg.w = q.w();
+
+    return msg;
+}
+
+void Pixhawk::set_flag(bool& flag) {
+    flag = true;
     this->publish_pixhawk_status();
 }
 
-void Pixhawk::set_flag_global_init_att(){
-    this->flag_global_init_att_set_ = true;
-
-    // Publish the status
-    this->publish_pixhawk_status();
-}
-
-void Pixhawk::set_flag_local_init_pose(){
-    this->flag_local_init_pose_set_ = true;
-
-    // Publish the status
+void Pixhawk::unset_flag(bool& flag) {
+    flag = false;
     this->publish_pixhawk_status();
 }
 
@@ -304,16 +369,27 @@ void Pixhawk::reset(){
     this->flag_local_init_pose_set_ = false;
     this->flag_global_init_att_set_ = false;
 
-    // Publish the status
+    // Publish the status (note cannot be done before the node is initialized i.e. cannot run this in the constructor)
     this->publish_pixhawk_status();
 }
 
 void Pixhawk::publish_pixhawk_status() {
-    // Publish the status
+    // Flags
     multi_drone_slung_load_interfaces::msg::PixhawkStatus msg_pixhawk_status;
     msg_pixhawk_status.gps_home_set = this->flag_gps_home_set_;
+    msg_pixhawk_status.global_origin_set = this->flag_global_origin_set_;
     msg_pixhawk_status.local_init_pose_set = this->flag_local_init_pose_set_;
     msg_pixhawk_status.global_init_att_set = this->flag_global_init_att_set_;
+
+    // Initial global state
+    msg_pixhawk_status.initial_global_position = toMsg(this->initial_global_state_.getPos());
+    msg_pixhawk_status.initial_global_attitude = toMsg(this->initial_global_state_.getAtt());
+
+    // Global origin 
+    msg_pixhawk_status.global_origin_position = toMsg(this->global_origin_state_.getPos());
+    msg_pixhawk_status.global_origin_attitude = toMsg(this->global_origin_state_.getAtt());
+
+    // Publish the status
     this->pub_pixhawk_status_->publish(msg_pixhawk_status);
 }
 
