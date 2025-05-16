@@ -32,9 +32,6 @@ public:
     //~Pixhawk();
 
     // HELPER FUNCTIONS
-    // void set_flag_gps_home();
-    // void set_flag_local_init_pose();
-    // void set_flag_global_init_att();
     void set_flag(bool& flag);
     void unset_flag(bool& flag);
 

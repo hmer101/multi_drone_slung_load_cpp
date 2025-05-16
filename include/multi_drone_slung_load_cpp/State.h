@@ -63,7 +63,7 @@ namespace droneState{
         std::string frame;
         CS_type cs_type;
         Eigen::Vector3d pos;
-        tf2::Quaternion att;
+        tf2::Quaternion att; // tf2 Quaternion (x,y,z,w) - w is the scalar part vs PX4 VehicleAttitude.q (w,x,y,z)
         Eigen::Vector3d vel;
     };
 }

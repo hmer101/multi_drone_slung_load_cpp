@@ -284,14 +284,12 @@ void Pixhawk::clbk_vehicle_global_position(const px4_msgs::msg::VehicleGlobalPos
 void Pixhawk::clbk_global_origin(const multi_drone_slung_load_interfaces::msg::GlobalPose msg) {
     this->global_origin_state_.setPos(Eigen::Vector3d(msg.global_pos.lat, msg.global_pos.lon, msg.global_pos.alt));
 
-    
-    //JUST UPDATED THISSSSSSS HEREEEEEE
-    this->global_origin_state_.setAtt(tf2::Quaternion(msg.global_att.q[3], msg.global_att.q[0], msg.global_att.q[1], msg.global_att.q[2])); //msg.global_att.q[0], msg.global_att.q[1], msg.global_att.q[2], msg.global_att.q[3]));
-    
+    //TODO: JUST UPDATED THISSSSSSS HEREEEEEE
+    // tf2::Quaternion is x,y,z,w; PX4 global attitude is w,x,y,z
+    this->global_origin_state_.setAtt(tf2::Quaternion(msg.global_att.q[1], msg.global_att.q[2], msg.global_att.q[3], msg.global_att.q[0])); //msg.global_att.q[0], msg.global_att.q[1], msg.global_att.q[2], msg.global_att.q[3]));
 
-
-
-    RCLCPP_INFO(this->get_logger(), "UPDATED GLOBAL ORIGIN: %f %f %f", this->global_origin_state_.getPos()[0], this->global_origin_state_.getPos()[1], this->global_origin_state_.getPos()[2]);
+    RCLCPP_INFO(this->get_logger(), "UPDATED GLOBAL ORIGIN POS: %f %f %f", this->global_origin_state_.getPos()[0], this->global_origin_state_.getPos()[1], this->global_origin_state_.getPos()[2]);
+    RCLCPP_INFO(this->get_logger(), "UPDATED GLOBAL ORIGIN ATT (x,y,z,w): %f %f %f %f", this->global_origin_state_.getAtt()[0], this->global_origin_state_.getAtt()[1], this->global_origin_state_.getAtt()[2], this->global_origin_state_.getAtt()[3]);
 
     // Global origin updated - must update local initial poses
     this->set_flag(this->flag_global_origin_set_);
@@ -313,28 +311,6 @@ void Pixhawk::clbk_gt(const geometry_msgs::msg::PoseArray msg) {
 
 
 // HELPER FUNCTIONS
-// void Pixhawk::set_flag_gps_home(){
-//     this->flag_gps_home_set_ = true;
-
-//     // Publish the status
-//     this->publish_pixhawk_status();
-// }
-
-// void Pixhawk::set_flag_global_init_att(){
-//     this->flag_global_init_att_set_ = true;
-
-//     // Publish the status
-//     this->publish_pixhawk_status();
-// }
-
-// void Pixhawk::set_flag_local_init_pose(){
-//     this->flag_local_init_pose_set_ = true;
-
-//     // Publish the status
-//     this->publish_pixhawk_status();
-// }
-
-
 geometry_msgs::msg::Point Pixhawk::toMsg(const Eigen::Vector3d& vec) {
     geometry_msgs::msg::Point msg;
     msg.x = vec.x();

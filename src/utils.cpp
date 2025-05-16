@@ -144,7 +144,7 @@ namespace utils {
         state_obj_gt.setAtt(utils::convert_quaternion_eigen_to_tf(att_q));
 
         // Publish the transform (broadcast TF)
-        utils::broadcast_tf(time, "ground_truth", name_frame_child + "_gt", state_obj_gt.getPos(), utils::convert_quaternion_tf_to_eigen(state_obj_gt.getAtt()), tf_broadcaster);
+        utils::broadcast_tf(time, "ground_truth", name_frame_child + "_gt", state_obj_gt.getPos(), att_q, tf_broadcaster); //utils::convert_quaternion_tf_to_eigen(state_obj_gt.getAtt())
 
         // If pixhawk_pose is provided, set the GPS home flag
         // if (pixhawk_pose != nullptr) {
