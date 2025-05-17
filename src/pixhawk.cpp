@@ -301,7 +301,7 @@ void Pixhawk::clbk_gt(const geometry_msgs::msg::PoseArray msg) {
     // Ground truth pose index changes depending on the device and the number of cameras
     size_t pose_ind = 2; // For drones in simulation
 
-    if(this->device_type_ == "load"){  //|| this->num_cameras_ == 0){ // For load and when no cameras are used
+    if(this->device_type_ == "load" || this->num_cameras_ == 0){ // For load and when no cameras are used
         pose_ind = 1;
     }
 
