@@ -64,6 +64,12 @@ Pixhawk::Pixhawk() : Node("pixhawk", rclcpp::NodeOptions().use_global_arguments(
 
     this->gt_state_ = droneState::State("ground_truth", droneState::CS_type::XYZ);
 
+    // TIMER
+    this->timer_ = this->create_wall_timer(
+        std::chrono::milliseconds(500),
+        std::bind(&Pixhawk::clbk_pub_pixhawk_status, this)
+    );
+
     // TFS
     this->tf_broadcaster_ = std::make_unique<tf2_ros::TransformBroadcaster>(*this);
     this->tf_static_broadcaster_init_pose_ = std::make_shared<tf2_ros::StaticTransformBroadcaster>(this);
@@ -104,10 +110,16 @@ Pixhawk::Pixhawk() : Node("pixhawk", rclcpp::NodeOptions().use_global_arguments(
     qos_profile_fmu.history(rclcpp::HistoryPolicy::KeepLast);
     //size_t qos_profile_fmu = 10;
 
+    // !!!! This is now set to qos_profile_sensor_data settings !!!!!
     rclcpp::QoS qos_profile_latched(rclcpp::KeepLast(1));  // Equivalent to depth=1
-    qos_profile_latched.reliability(rclcpp::ReliabilityPolicy::Reliable);
-    qos_profile_latched.durability(rclcpp::DurabilityPolicy::TransientLocal);
+    qos_profile_latched.reliability(rclcpp::ReliabilityPolicy::BestEffort);
+    qos_profile_latched.durability(rclcpp::DurabilityPolicy::Volatile);
     qos_profile_latched.history(rclcpp::HistoryPolicy::KeepLast);
+
+    // rclcpp::QoS qos_profile_latched(rclcpp::KeepLast(1));  // Equivalent to depth=1
+    // qos_profile_latched.reliability(rclcpp::ReliabilityPolicy::Reliable);
+    // qos_profile_latched.durability(rclcpp::DurabilityPolicy::TransientLocal);
+    // qos_profile_latched.history(rclcpp::HistoryPolicy::KeepLast);
 
     rclcpp::QoS qos_profile_gz(rclcpp::KeepLast(1));  // Equivalent to depth=1
     qos_profile_gz.reliability(rclcpp::ReliabilityPolicy::Reliable);
@@ -188,6 +200,10 @@ Pixhawk::Pixhawk() : Node("pixhawk", rclcpp::NodeOptions().use_global_arguments(
 }
 
 // CALLBACKS
+void Pixhawk::clbk_pub_pixhawk_status() {
+    this->publish_pixhawk_status();
+}
+
 void Pixhawk::clbk_change_phase(const multi_drone_slung_load_interfaces::msg::Phase::SharedPtr msg) {
     this->current_phase_ = msg->phase;
 }
@@ -243,7 +259,7 @@ void Pixhawk::clbk_vehicle_global_position(const px4_msgs::msg::VehicleGlobalPos
     bool correct_phase = (this->device_type_ == "drone" && this->current_phase_ == multi_drone_slung_load_interfaces::msg::Phase::PHASE_SETUP_DRONE) 
         || (this->device_type_ == "load" && this->current_phase_ == multi_drone_slung_load_interfaces::msg::Phase::PHASE_SETUP_LOAD); //TODO: TEST THIS ACTUALLY WORKS ON LOAD (might have to use same logic as load and check if all drones are in load setup phase)
 
-    if (!this->flag_gps_home_set_ && correct_phase) {
+    if (correct_phase) { //!this->flag_gps_home_set_ && TODO: MAKE SURE IT WORKS WITHOUT THIS!!
         // Set the initial global position (lat, lon, alt)
         this->initial_global_state_.setPos(Eigen::Vector3d(msg->lat, msg->lon, msg->alt));
 

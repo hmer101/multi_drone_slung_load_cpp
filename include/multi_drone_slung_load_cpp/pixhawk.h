@@ -64,6 +64,9 @@ private:
     //multi_drone_slung_load_interfaces::msg::Phase current_phase_;
     uint8_t current_phase_;
 
+    // TIMERS
+    rclcpp::TimerBase::SharedPtr timer_;
+
     // TFS
     std::unique_ptr<tf2_ros::TransformBroadcaster> tf_broadcaster_;
     std::shared_ptr<tf2_ros::StaticTransformBroadcaster> tf_static_broadcaster_init_pose_;
@@ -95,6 +98,7 @@ private:
     rclcpp::Subscription<multi_drone_slung_load_interfaces::msg::GlobalPose>::SharedPtr sub_global_origin_;
 
     // CALLBACKS
+    void clbk_pub_pixhawk_status();
     void clbk_change_phase(const multi_drone_slung_load_interfaces::msg::Phase::SharedPtr msg);
     void clbk_vehicle_attitude(const px4_msgs::msg::VehicleAttitude::SharedPtr msg);
     void clbk_vehicle_local_position(const px4_msgs::msg::VehicleLocalPosition::SharedPtr msg);
