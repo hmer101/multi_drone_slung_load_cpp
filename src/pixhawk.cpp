@@ -160,13 +160,13 @@ Pixhawk::Pixhawk() : Node("pixhawk", rclcpp::NodeOptions().use_global_arguments(
         std::bind(&Pixhawk::clbk_vehicle_local_position, this, std::placeholders::_1)
     );
 
-    if(this->gt_source_ != "mocap"){
-        this->sub_global_pos_ = this->create_subscription<px4_msgs::msg::VehicleGlobalPosition>(
-            this->ns_ + "/fmu/out/vehicle_global_position", 
-            qos_profile_fmu,
-            std::bind(&Pixhawk::clbk_vehicle_global_position, this, std::placeholders::_1)
-        );
-    }
+    //if(this->gt_source_ != "mocap"){
+    this->sub_global_pos_ = this->create_subscription<px4_msgs::msg::VehicleGlobalPosition>(
+        this->ns_ + "/fmu/out/vehicle_global_position", 
+        qos_profile_fmu,
+        std::bind(&Pixhawk::clbk_vehicle_global_position, this, std::placeholders::_1)
+    );
+    //}
 
     // Ground truth (this could be moved to another node if required)
     if((this->load_pose_type_ == "ground_truth" || this->evaluate_) && (this->env_ == "sim")){
@@ -263,33 +263,25 @@ void Pixhawk::clbk_vehicle_global_position(const px4_msgs::msg::VehicleGlobalPos
         // Set the initial global position (lat, lon, alt)
         this->initial_global_state_.setPos(Eigen::Vector3d(msg->lat, msg->lon, msg->alt));
 
-        // If set_global_origin_to_current is true, reset the origin to current GPS
-        // NOTE: YOU WOULD ONLY NOT DO THIS WHEN USING MOCAP WHICH IS DELT WITH ELSEWHERE NOW
-        //if (set_global_origin_to_current) {
-        utils::set_origin(this->pub_vehicle_command_, this->get_clock()->now(), msg->lat, msg->lon, msg->alt);
-        //}
-        // Otherwise, set origin to provided LLA coordinates if available
-        // else if (origin_lla) {
-        //     offboard_ros::set_origin(pub_vehicle_command, origin_lla[0], origin_lla[1], origin_lla[2], this->get_clock()->now());
-        // }
+        // Reset origin if frame system is not mocap
+        if(this->gt_source_ != "mocap"){
+            utils::set_origin(this->pub_vehicle_command_, this->get_clock()->now(), msg->lat, msg->lon, msg->alt);
 
-        // If the global pose should be published
-        // if (pub_global_init_pose) {
-        // Create the message to publish
-        multi_drone_slung_load_interfaces::msg::GlobalPose msg_global_pose;
-        msg_global_pose.global_pos.lat = this->initial_global_state_.getPos()[0];
-        msg_global_pose.global_pos.lon = this->initial_global_state_.getPos()[1];
-        msg_global_pose.global_pos.alt = this->initial_global_state_.getPos()[2];
+            // Create the message to publish
+            multi_drone_slung_load_interfaces::msg::GlobalPose msg_global_pose;
+            msg_global_pose.global_pos.lat = this->initial_global_state_.getPos()[0];
+            msg_global_pose.global_pos.lon = this->initial_global_state_.getPos()[1];
+            msg_global_pose.global_pos.alt = this->initial_global_state_.getPos()[2];
 
-        // Set the global attitude quaternion (converted from internal state)
-        msg_global_pose.global_att.q[0] = this->initial_global_state_.getAtt().w();
-        msg_global_pose.global_att.q[1] = this->initial_global_state_.getAtt().x();
-        msg_global_pose.global_att.q[2] = this->initial_global_state_.getAtt().y();
-        msg_global_pose.global_att.q[3] = this->initial_global_state_.getAtt().z();
+            // Set the global attitude quaternion (converted from internal state)
+            msg_global_pose.global_att.q[0] = this->initial_global_state_.getAtt().w();
+            msg_global_pose.global_att.q[1] = this->initial_global_state_.getAtt().x();
+            msg_global_pose.global_att.q[2] = this->initial_global_state_.getAtt().y();
+            msg_global_pose.global_att.q[3] = this->initial_global_state_.getAtt().z();
 
-        // Publish the global pose
-        this->pub_global_init_pose_->publish(msg_global_pose);
-        // }
+            // Publish the global pose
+            this->pub_global_init_pose_->publish(msg_global_pose);
+        }
 
         // Set the flag to indicate that GPS home has been set
         //this->set_flag_gps_home();
