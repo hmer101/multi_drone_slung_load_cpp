@@ -270,24 +270,15 @@ void Pixhawk::clbk_vehicle_local_position(const px4_msgs::msg::VehicleLocalPosit
             droneState::State state_local_ref = this->local_state_.copy();
             state_local_ref.setFrame("local_ref");
             state_local_ref.setCsType(droneState::CS_type::ENU);
-            //state_local_ref = utils::transform_frames(state_local_ref, "local_ref", *this->tf_buffer_, this->get_logger(), droneState::CS_type::ENU);
-            
-            RCLCPP_INFO(this->get_logger(), "Raw position: [%.2f, %.2f, %.2f]",
-                    state_local_ref.getPos().x(), state_local_ref.getPos().y(), state_local_ref.getPos().z());
 
             std::shared_ptr<droneState::State> state_ptr = utils::transform_frames(this->local_state_, "local_ref", *this->tf_buffer_, this->get_logger(), droneState::CS_type::ENU);
             if (state_ptr) {
                 state_local_ref = *state_ptr;  // dereference and assign
-
-                RCLCPP_INFO(this->get_logger(), "Transformed position: [%.2f, %.2f, %.2f]",
-                    state_local_ref.getPos().x(), state_local_ref.getPos().y(), state_local_ref.getPos().z());
                     
             } else {
                 RCLCPP_WARN(this->get_logger(), "Failed to transform drone's state into local_ref. Using drone's ENU local state instead.");
             }
             
-            //RCLCPP_WARN(this->get_logger(), "Performed TF!");
-
             // Send the local state as a pose estimate message
             multi_drone_slung_load_interfaces::msg::PoseEstimate msg_pose_estimate;
             msg_pose_estimate.header.stamp = this->get_clock()->now();
