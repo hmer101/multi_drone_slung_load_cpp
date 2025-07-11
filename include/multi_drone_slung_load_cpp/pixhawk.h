@@ -7,7 +7,8 @@
 #include <tf2_ros/static_transform_broadcaster.h>
 #include <tf2_ros/transform_broadcaster.h>
 
-//#include <tf2_ros/transform_listener.h>
+#include <tf2_ros/transform_listener.h>
+#include <tf2_ros/buffer.h>
 
 #include <geometry_msgs/msg/pose_array.hpp>
 //#include "std_msgs/msg/string.hpp"
@@ -24,6 +25,7 @@
 #include "multi_drone_slung_load_interfaces/msg/phase.hpp"
 #include "multi_drone_slung_load_interfaces/msg/global_pose.hpp"
 #include "multi_drone_slung_load_interfaces/msg/pixhawk_status.hpp"
+#include "multi_drone_slung_load_interfaces/msg/pose_estimate.hpp"
 
 
 class Pixhawk : public rclcpp::Node {
@@ -46,6 +48,7 @@ private:
     std::string device_type_;
     std::string load_pose_type_;
     bool evaluate_;
+    bool pub_drone_pose_est_;
     std::string gt_source_;
     int num_cameras_;
     int first_drone_num_;
@@ -74,7 +77,9 @@ private:
     std::shared_ptr<tf2_ros::StaticTransformBroadcaster> tf_static_broadcaster_item2_rel_item1_;
     std::shared_ptr<tf2_ros::StaticTransformBroadcaster> tf_static_broadcaster_item2_rel_item1_d_;
     std::shared_ptr<tf2_ros::StaticTransformBroadcaster> tf_static_broadcaster_item2_rel_item1_gt_;
-   
+
+    std::shared_ptr<tf2_ros::TransformListener> tf_listener_{nullptr};
+    std::unique_ptr<tf2_ros::Buffer> tf_buffer_;
 
     // FLAGS
     bool flag_gps_home_set_;
@@ -87,6 +92,7 @@ private:
     rclcpp::Publisher<px4_msgs::msg::VehicleCommand>::SharedPtr pub_vehicle_command_;
     rclcpp::Publisher<multi_drone_slung_load_interfaces::msg::GlobalPose>::SharedPtr pub_global_init_pose_;
     rclcpp::Publisher<multi_drone_slung_load_interfaces::msg::PixhawkStatus>::SharedPtr pub_pixhawk_status_;
+    rclcpp::Publisher<multi_drone_slung_load_interfaces::msg::PoseEstimate>::SharedPtr pub_pose_estimate_;
 
     // SUBSCRIBERS
     rclcpp::Subscription<multi_drone_slung_load_interfaces::msg::Phase>::SharedPtr sub_vehicle_phase;
@@ -107,6 +113,7 @@ private:
     void clbk_gt(const geometry_msgs::msg::PoseArray msg);
 
     // HELPER FUNCTIONS
+    geometry_msgs::msg::Vector3 toMsg_vec3(const Eigen::Vector3d& vec);
     geometry_msgs::msg::Point toMsg(const Eigen::Vector3d& vec);
     geometry_msgs::msg::Quaternion toMsg(const tf2::Quaternion& q);
     void reset();

@@ -41,6 +41,9 @@ Pixhawk::Pixhawk() : Node("pixhawk", rclcpp::NodeOptions().use_global_arguments(
     this->declare_parameter<bool>("evaluate", false);
     this->get_parameter("evaluate", this->evaluate_);
 
+    this->declare_parameter<bool>("pub_drone_pose_est", false);
+    this->get_parameter("pub_drone_pose_est", this->pub_drone_pose_est_);
+
     this->declare_parameter<std::string>("gt_source", "mocap");
     this->get_parameter("gt_source", this->gt_source_);
 
@@ -77,6 +80,9 @@ Pixhawk::Pixhawk() : Node("pixhawk", rclcpp::NodeOptions().use_global_arguments(
     this->tf_static_broadcaster_item2_rel_item1_ = std::make_shared<tf2_ros::StaticTransformBroadcaster>(this);
     this->tf_static_broadcaster_item2_rel_item1_d_ = std::make_shared<tf2_ros::StaticTransformBroadcaster>(this);
     this->tf_static_broadcaster_item2_rel_item1_gt_ = std::make_shared<tf2_ros::StaticTransformBroadcaster>(this);
+    
+    this->tf_buffer_ = std::make_unique<tf2_ros::Buffer>(this->get_clock());
+    this->tf_listener_ = std::make_shared<tf2_ros::TransformListener>(*this->tf_buffer_);
 
     // FLAGS
     this->flag_gps_home_set_ = false; // GPS home set when vehicle armed
@@ -138,6 +144,11 @@ Pixhawk::Pixhawk() : Node("pixhawk", rclcpp::NodeOptions().use_global_arguments(
 
     this->pub_pixhawk_status_ = this->create_publisher<multi_drone_slung_load_interfaces::msg::PixhawkStatus>(
         this->ns_ + "/out/pixhawk_status", qos_profile_latched);
+
+    if(this->pub_drone_pose_est_){
+        this->pub_pose_estimate_ = this->create_publisher<multi_drone_slung_load_interfaces::msg::PoseEstimate>(
+            this->ns_ + "/out/pose_estimate_local_ref", qos_profile_drone_system);
+    }
 
     // SUBSCRIBERS
     // DRONE 
@@ -233,6 +244,7 @@ void Pixhawk::clbk_vehicle_local_position(const px4_msgs::msg::VehicleLocalPosit
     // Handle NED->ENU transformation
     this->local_state_.setPos(Eigen::Vector3d(msg->y, msg->x, -msg->z));  // Position: (y, x, -z)
     this->local_state_.setVel(Eigen::Vector3d(msg->vy, msg->vx, -msg->vz));  // Velocity: (vy, vx, -vz)
+    this->local_state_.setAcc(Eigen::Vector3d(msg->ay, msg->ax, -msg->az));  // Acceleration: (ay, ax, -az)
 
     // Publish TF if orientation is valid (non-NaN)
     if (!std::isnan(this->local_state_.getAtt().x())) {
@@ -251,6 +263,42 @@ void Pixhawk::clbk_vehicle_local_position(const px4_msgs::msg::VehicleLocalPosit
         //     // Set the GPS home for the mocap system
         //     utils::set_origin(this->pub_vehicle_command_, this->get_clock()->now(), this->mocap_origin_lla_[0], this->mocap_origin_lla_[1], this->mocap_origin_lla_[2]);
         // }
+
+        // Publish drone's pose estimate in ENU frame if enabled
+        if(this->pub_drone_pose_est_){
+            // Convert local state to local_ref reference frame
+            droneState::State state_local_ref = this->local_state_.copy();
+            state_local_ref.setFrame("local_ref");
+            state_local_ref.setCsType(droneState::CS_type::ENU);
+            //state_local_ref = utils::transform_frames(state_local_ref, "local_ref", *this->tf_buffer_, this->get_logger(), droneState::CS_type::ENU);
+            
+            RCLCPP_INFO(this->get_logger(), "Raw position: [%.2f, %.2f, %.2f]",
+                    state_local_ref.getPos().x(), state_local_ref.getPos().y(), state_local_ref.getPos().z());
+
+            std::shared_ptr<droneState::State> state_ptr = utils::transform_frames(this->local_state_, "local_ref", *this->tf_buffer_, this->get_logger(), droneState::CS_type::ENU);
+            if (state_ptr) {
+                state_local_ref = *state_ptr;  // dereference and assign
+
+                RCLCPP_INFO(this->get_logger(), "Transformed position: [%.2f, %.2f, %.2f]",
+                    state_local_ref.getPos().x(), state_local_ref.getPos().y(), state_local_ref.getPos().z());
+                    
+            } else {
+                RCLCPP_WARN(this->get_logger(), "Failed to transform drone's state into local_ref. Using drone's ENU local state instead.");
+            }
+            
+            //RCLCPP_WARN(this->get_logger(), "Performed TF!");
+
+            // Send the local state as a pose estimate message
+            multi_drone_slung_load_interfaces::msg::PoseEstimate msg_pose_estimate;
+            msg_pose_estimate.header.stamp = this->get_clock()->now();
+            msg_pose_estimate.header.frame_id = "local_ref"; //this->name_ + "_init";
+            msg_pose_estimate.transform.translation = this->toMsg_vec3(state_local_ref.getPos());
+            //msg_pose_estimate.transform.rotation = this->toMsg(this->local_state_.getAtt());
+            msg_pose_estimate.lin_vel = this->toMsg_vec3(state_local_ref.getVel());
+            msg_pose_estimate.lin_accel = this->toMsg_vec3(state_local_ref.getAcc());
+
+            this->pub_pose_estimate_->publish(msg_pose_estimate);
+        }
     }
 }
 
@@ -319,6 +367,15 @@ void Pixhawk::clbk_gt(const geometry_msgs::msg::PoseArray msg) {
 
 
 // HELPER FUNCTIONS
+geometry_msgs::msg::Vector3 Pixhawk::toMsg_vec3(const Eigen::Vector3d& vec) {
+    geometry_msgs::msg::Vector3 msg;
+    msg.x = vec.x();
+    msg.y = vec.y();
+    msg.z = vec.z();
+
+    return msg;
+}
+
 geometry_msgs::msg::Point Pixhawk::toMsg(const Eigen::Vector3d& vec) {
     geometry_msgs::msg::Point msg;
     msg.x = vec.x();

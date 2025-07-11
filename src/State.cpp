@@ -4,14 +4,14 @@
 
 namespace droneState{
     // Constructor implementation
-    State::State(std::string frame, CS_type cs_type, Eigen::Vector3d pos, tf2::Quaternion att, Eigen::Vector3d vel)
-        : frame(frame), cs_type(cs_type), pos(pos), att(att), vel(vel) {}
+    State::State(std::string frame, CS_type cs_type, Eigen::Vector3d pos, tf2::Quaternion att, Eigen::Vector3d vel, Eigen::Vector3d acc)
+        : frame(frame), cs_type(cs_type), pos(pos), att(att), vel(vel), acc(acc) {}
 
     // Operator == implementation
     bool State::operator==(const State& other) const {
         return frame == other.frame && cs_type == other.cs_type &&
             pos.isApprox(other.pos) && att == other.att &&
-            vel.isApprox(other.vel);
+            vel.isApprox(other.vel) && acc.isApprox(other.acc);
     }
 
     // Operator - implementation. 
@@ -20,14 +20,14 @@ namespace droneState{
         if (frame != other.frame || cs_type != other.cs_type) {
             throw std::invalid_argument("Subtraction can only be performed on states with the same frame and CS type");
         }else {
-            return State(frame, cs_type, pos - other.pos, other.att*att.inverse(), vel - other.vel); // TODO: Check relative att
+            return State(frame, cs_type, pos - other.pos, other.att*att.inverse(), vel - other.vel, acc - other.acc); // TODO: Check relative att
         }
         
     }
 
     // Copy method implementation
     State State::copy() const {
-        return State(frame, cs_type, pos, att, vel);
+        return State(frame, cs_type, pos, att, vel, acc);
     }
 
     // to_string method implementation
@@ -36,7 +36,8 @@ namespace droneState{
         ss << "Frame: " << frame << ", CS type: " << static_cast<int>(cs_type)
         << ", pos: [" << pos[0] << ", " << pos[1] << ", " << pos[2] << "]"
         << ", att_q: [" << att.w() << ", " << att.x() << ", " << att.y() << ", " << att.z() << "]"
-        << ", vel: [" << vel[0] << ", " << vel[1] << ", " << vel[2] << "]";
+        << ", vel: [" << vel[0] << ", " << vel[1] << ", " << vel[2] << "]"
+        << ", acc: [" << acc[0] << ", " << acc[1] << ", " << acc[2] << "]";
         return ss.str();
     }
 

@@ -20,7 +20,7 @@ namespace droneState{
     // Class to store robot state
     class State {
     public:
-        State(std::string frame, CS_type cs_type, Eigen::Vector3d pos = Eigen::Vector3d(0.0, 0.0, 0.0), tf2::Quaternion att = tf2::Quaternion(0.0, 0.0, 0.0, 1.0), Eigen::Vector3d vel = Eigen::Vector3d(0.0, 0.0, 0.0));
+        State(std::string frame, CS_type cs_type, Eigen::Vector3d pos = Eigen::Vector3d(0.0, 0.0, 0.0), tf2::Quaternion att = tf2::Quaternion(0.0, 0.0, 0.0, 1.0), Eigen::Vector3d vel = Eigen::Vector3d(0.0, 0.0, 0.0), Eigen::Vector3d acc = Eigen::Vector3d(0.0, 0.0, 0.0));
         State() : State("default_frame", CS_type::ENU) {}; // Default constructor that delegates to the main constructor
 
         bool operator==(const State& other) const;
@@ -51,6 +51,7 @@ namespace droneState{
         }
 
         Eigen::Vector3d getVel() const { return vel; }
+        Eigen::Vector3d getAcc() const { return acc; }
 
         // Setters
         void setFrame(const std::string& newFrame) { frame = newFrame; }
@@ -58,6 +59,7 @@ namespace droneState{
         void setPos(const Eigen::Vector3d& newPos) { pos = newPos; }
         void setAtt(const tf2::Quaternion& newAtt) { att = newAtt; }
         void setVel(const Eigen::Vector3d& newVel) { vel = newVel; }
+        void setAcc(const Eigen::Vector3d& newAcc) { acc = newAcc; }
 
     private:
         std::string frame;
@@ -65,6 +67,7 @@ namespace droneState{
         Eigen::Vector3d pos;
         tf2::Quaternion att; // tf2 Quaternion (x,y,z,w) - w is the scalar part vs PX4 VehicleAttitude.q (w,x,y,z)
         Eigen::Vector3d vel;
+        Eigen::Vector3d acc;
     };
 }
 

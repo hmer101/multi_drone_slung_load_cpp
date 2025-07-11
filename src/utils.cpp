@@ -77,44 +77,98 @@ namespace utils {
         }
     }
 
+    // Eigen::Vector3d transform_vector(const Eigen::Vector3d& vec_in, const tf2::Quaternion& q_CB) {
+    //     tf2::Quaternion vec_quat(0, vec_in.x(), vec_in.y(), vec_in.z());
+    //     tf2::Quaternion vec_rotated = q_CB * vec_quat * q_CB.inverse();
+    //     return Eigen::Vector3d(vec_rotated.x(), vec_rotated.y(), vec_rotated.z());
+    // }
 
-    Eigen::Vector3d transform_position(const Eigen::Vector3d& p_BA, const Eigen::Vector3d& p_CB, const tf2::Quaternion& q_CB) {
-        tf2::Quaternion p_BA_quat(0, p_BA.x(), p_BA.y(), p_BA.z());
-        tf2::Quaternion p_BA_rotated = q_CB * p_BA_quat * q_CB.inverse();
-        Eigen::Vector3d p_CA = Eigen::Vector3d(p_BA_rotated.x(), p_BA_rotated.y(), p_BA_rotated.z()) + p_CB;
-        return p_CA;
-    }
+    // Eigen::Vector3d transform_velocity(const Eigen::Vector3d& v_BA, const tf2::Quaternion& q_CB) {
+    //     return transform_vector(v_BA, q_CB);
+    // }
 
-    tf2::Quaternion transform_orientation(const tf2::Quaternion& q_BA, const tf2::Quaternion& q_CB) {
-        tf2::Quaternion q_CA = q_CB * q_BA;
-        return q_CA;
-    }
+    // Eigen::Vector3d transform_acceleration(const Eigen::Vector3d& a_BA, const tf2::Quaternion& q_CB) {
+    //     return transform_vector(a_BA, q_CB);
+    // }
+
+    // Eigen::Vector3d transform_position(const Eigen::Vector3d& p_BA, const Eigen::Vector3d& p_CB, const tf2::Quaternion& q_CB) {
+    //     tf2::Quaternion p_BA_quat(0, p_BA.x(), p_BA.y(), p_BA.z());
+    //     tf2::Quaternion p_BA_rotated = q_CB * p_BA_quat * q_CB.inverse();
+    //     Eigen::Vector3d p_CA = Eigen::Vector3d(p_BA_rotated.x(), p_BA_rotated.y(), p_BA_rotated.z()) + p_CB;
+    //     return p_CA;
+    // }
+
+    // tf2::Quaternion transform_orientation(const tf2::Quaternion& q_BA, const tf2::Quaternion& q_CB) {
+    //     tf2::Quaternion q_CA = q_CB * q_BA;
+    //     return q_CA;
+    // }
 
     std::shared_ptr<droneState::State> transform_frames(const droneState::State& state, const std::string& frame2_name, tf2_ros::Buffer& tf_buffer, rclcpp::Logger logger, droneState::CS_type cs_out_type) {
         std::shared_ptr<droneState::State> state2 = std::make_shared<droneState::State>(frame2_name, cs_out_type); //CS_type::ENU
+        // --- Transform Pose (position + orientation) ---
+        geometry_msgs::msg::PoseStamped pose_in, pose_out;
+        pose_in.header.frame_id = state.getFrame();
+        pose_in.header.stamp = rclcpp::Time(0, 0, RCL_ROS_TIME);;
+        pose_in.pose.position.x = state.getPos().x();
+        pose_in.pose.position.y = state.getPos().y();
+        pose_in.pose.position.z = state.getPos().z();
+        pose_in.pose.orientation = tf2::toMsg(state.getAtt());
 
-        // Find the transform
-        geometry_msgs::msg::TransformStamped tf_f1_rel_f2;
         try {
-            tf_f1_rel_f2 = tf_buffer.lookupTransform(frame2_name, state.getFrame(), tf2::TimePointZero);
+            pose_out = tf_buffer.transform(pose_in, frame2_name, tf2::Duration(std::chrono::milliseconds(100)));
         } catch (tf2::TransformException& ex) {
-            RCLCPP_WARN(logger, "Failed to find transform: %s", ex.what());
+            RCLCPP_WARN(logger, "Failed to transform pose: %s", ex.what());
             return nullptr;
         }
 
-        // Collect transformation vector and quaternion
-        Eigen::Vector3d p_f2f1(tf_f1_rel_f2.transform.translation.x,
-                            tf_f1_rel_f2.transform.translation.y,
-                            tf_f1_rel_f2.transform.translation.z);
+        // Set transformed pose
+        state2->setPos(Eigen::Vector3d(
+            pose_out.pose.position.x,
+            pose_out.pose.position.y,
+            pose_out.pose.position.z));
 
-        tf2::Quaternion q_f2f1(tf_f1_rel_f2.transform.rotation.x,
-                            tf_f1_rel_f2.transform.rotation.y,
-                            tf_f1_rel_f2.transform.rotation.z,
-                            tf_f1_rel_f2.transform.rotation.w);
+        tf2::Quaternion q_out;
+        tf2::fromMsg(pose_out.pose.orientation, q_out);
+        state2->setAtt(q_out);
 
-        // Perform transform
-        state2->setPos(transform_position(state.getPos(), p_f2f1, q_f2f1));
-        state2->setAtt(transform_orientation(state.getAtt(), q_f2f1));
+        // --- Transform Velocity ---
+        geometry_msgs::msg::Vector3Stamped vel_in, vel_out;
+        vel_in.header.frame_id = state.getFrame();
+        vel_in.header.stamp = rclcpp::Time(0, 0, RCL_ROS_TIME);;
+        vel_in.vector.x = state.getVel().x();
+        vel_in.vector.y = state.getVel().y();
+        vel_in.vector.z = state.getVel().z();
+
+        try {
+            vel_out = tf_buffer.transform(vel_in, frame2_name);
+            state2->setVel(Eigen::Vector3d(
+                vel_out.vector.x,
+                vel_out.vector.y,
+                vel_out.vector.z));
+        } catch (tf2::TransformException& ex) {
+            RCLCPP_WARN(logger, "Failed to transform velocity: %s", ex.what());
+            // Optionally copy untransformed value
+            state2->setVel(state.getVel());
+        }
+
+        // --- Transform Acceleration ---
+        geometry_msgs::msg::Vector3Stamped acc_in, acc_out;
+        acc_in.header.frame_id = state.getFrame();
+        acc_in.header.stamp = rclcpp::Time(0, 0, RCL_ROS_TIME);;
+        acc_in.vector.x = state.getAcc().x();
+        acc_in.vector.y = state.getAcc().y();
+        acc_in.vector.z = state.getAcc().z();
+
+        try {
+            acc_out = tf_buffer.transform(acc_in, frame2_name);
+            state2->setAcc(Eigen::Vector3d(
+                acc_out.vector.x,
+                acc_out.vector.y,
+                acc_out.vector.z));
+        } catch (tf2::TransformException& ex) {
+            RCLCPP_WARN(logger, "Failed to transform acceleration: %s", ex.what());
+            state2->setAcc(state.getAcc());
+        }
 
         return state2;
     }

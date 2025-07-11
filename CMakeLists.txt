@@ -87,13 +87,46 @@ ament_target_dependencies(gcs_background_centralized rclcpp geometry_msgs px4_ms
 ament_target_dependencies(tf_static_to_tf_relay rclcpp tf2_msgs geometry_msgs)
 
 # Install the libraries and executables
+#install(TARGETS
+#  utils
+#  State
+#  pixhawk
+#  gcs_background_centralized
+#  tf_static_to_tf_relay
+#  EXPORT multi_drone_slung_load_cppTargets
+#  DESTINATION lib/${PROJECT_NAME})
+
+# Install and export only shared libraries
 install(TARGETS
   utils
   State
+  EXPORT multi_drone_slung_load_cppTargets
+  DESTINATION lib/${PROJECT_NAME}
+)
+
+# Install executables (DO NOT EXPORT)
+install(TARGETS
+  frame_transforms
   pixhawk
   gcs_background_centralized
   tf_static_to_tf_relay
-  DESTINATION lib/${PROJECT_NAME})
+  DESTINATION lib/${PROJECT_NAME}
+)
+
+
+
+# Install the header files for inclusion in other packages
+install(DIRECTORY include/
+  DESTINATION include
+)
+
+# Export libraries and includes
+ament_export_targets(multi_drone_slung_load_cppTargets HAS_LIBRARY_TARGET)
+ament_export_dependencies(rclcpp tf2_ros tf2_eigen Eigen3 std_msgs geometry_msgs tf2_geometry_msgs px4_msgs multi_drone_slung_load_interfaces)
+ament_export_include_directories(include)
+
+#ament_export_include_directories(include)
+#ament_export_targets(utils State frame_transforms HAS_LIBRARY_TARGET)
 
 
 # Install launch files.
