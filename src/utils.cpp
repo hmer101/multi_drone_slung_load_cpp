@@ -77,32 +77,6 @@ namespace utils {
         }
     }
 
-    // Eigen::Vector3d transform_vector(const Eigen::Vector3d& vec_in, const tf2::Quaternion& q_CB) {
-    //     tf2::Quaternion vec_quat(0, vec_in.x(), vec_in.y(), vec_in.z());
-    //     tf2::Quaternion vec_rotated = q_CB * vec_quat * q_CB.inverse();
-    //     return Eigen::Vector3d(vec_rotated.x(), vec_rotated.y(), vec_rotated.z());
-    // }
-
-    // Eigen::Vector3d transform_velocity(const Eigen::Vector3d& v_BA, const tf2::Quaternion& q_CB) {
-    //     return transform_vector(v_BA, q_CB);
-    // }
-
-    // Eigen::Vector3d transform_acceleration(const Eigen::Vector3d& a_BA, const tf2::Quaternion& q_CB) {
-    //     return transform_vector(a_BA, q_CB);
-    // }
-
-    // Eigen::Vector3d transform_position(const Eigen::Vector3d& p_BA, const Eigen::Vector3d& p_CB, const tf2::Quaternion& q_CB) {
-    //     tf2::Quaternion p_BA_quat(0, p_BA.x(), p_BA.y(), p_BA.z());
-    //     tf2::Quaternion p_BA_rotated = q_CB * p_BA_quat * q_CB.inverse();
-    //     Eigen::Vector3d p_CA = Eigen::Vector3d(p_BA_rotated.x(), p_BA_rotated.y(), p_BA_rotated.z()) + p_CB;
-    //     return p_CA;
-    // }
-
-    // tf2::Quaternion transform_orientation(const tf2::Quaternion& q_BA, const tf2::Quaternion& q_CB) {
-    //     tf2::Quaternion q_CA = q_CB * q_BA;
-    //     return q_CA;
-    // }
-
     std::shared_ptr<droneState::State> transform_frames(const droneState::State& state, const std::string& frame2_name, tf2_ros::Buffer& tf_buffer, rclcpp::Logger logger, droneState::CS_type cs_out_type) {
         std::shared_ptr<droneState::State> state2 = std::make_shared<droneState::State>(frame2_name, cs_out_type); //CS_type::ENU
         // --- Transform Pose (position + orientation) ---
