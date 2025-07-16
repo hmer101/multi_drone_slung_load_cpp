@@ -146,7 +146,60 @@ namespace utils {
 
         return state2;
     }
-    
+
+    geometry_msgs::msg::WrenchStamped transform_wrench(
+        const geometry_msgs::msg::WrenchStamped::SharedPtr& msg,
+        const std::string& target_frame,
+        const std::string& source_frame,
+        tf2_ros::Buffer& tf_buffer,
+        const rclcpp::Time& time,
+        rclcpp::Logger logger)
+    {
+        geometry_msgs::msg::WrenchStamped out_msg;
+        
+        try {
+            // Lookup the transform from the original frame to the target frame
+            auto transform_stamped =
+                lookup_tf(target_frame, source_frame, tf_buffer, time, logger);
+
+            // Convert rotation to tf2 quaternion
+            tf2::Quaternion q(
+                transform_stamped->transform.rotation.x,
+                transform_stamped->transform.rotation.y,
+                transform_stamped->transform.rotation.z,
+                transform_stamped->transform.rotation.w);
+            tf2::Matrix3x3 rot_matrix(q);
+
+            // Convert force
+            tf2::Vector3 force(msg->wrench.force.x,
+                            msg->wrench.force.y,
+                            msg->wrench.force.z);
+            tf2::Vector3 torque(msg->wrench.torque.x,
+                                msg->wrench.torque.y,
+                                msg->wrench.torque.z);
+
+            // Apply rotation only (no translation for forces/torques)
+            tf2::Vector3 force_transformed = rot_matrix * force;
+            tf2::Vector3 torque_transformed = rot_matrix * torque;
+
+            // Fill out transformed wrench
+            out_msg.header.stamp = msg->header.stamp;
+            out_msg.header.frame_id = target_frame;
+            out_msg.wrench.force.x = force_transformed.x();
+            out_msg.wrench.force.y = force_transformed.y();
+            out_msg.wrench.force.z = force_transformed.z();
+            out_msg.wrench.torque.x = torque_transformed.x();
+            out_msg.wrench.torque.y = torque_transformed.y();
+            out_msg.wrench.torque.z = torque_transformed.z();
+        }
+        catch (tf2::TransformException &ex) {
+            RCLCPP_WARN(logger, "Could not transform wrench: %s", ex.what());
+            throw;
+        }
+
+        return out_msg;
+    }
+
     droneState::State update_ground_truth_pose(
         const geometry_msgs::msg::PoseArray &gt_msg,
         const rclcpp::Time &time,

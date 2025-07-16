@@ -31,6 +31,7 @@ namespace utils {
     std::optional<geometry_msgs::msg::TransformStamped> lookup_tf(const std::string &target_frame, const std::string &source_frame, tf2_ros::Buffer &tfBuffer, const rclcpp::Time &time, rclcpp::Logger logger);
 
     std::shared_ptr<droneState::State> transform_frames(const droneState::State &state, const std::string &frame2_name, tf2_ros::Buffer &tf_buffer, rclcpp::Logger logger, droneState::CS_type cs_out_type = droneState::CS_type::XYZ);
+    geometry_msgs::msg::WrenchStamped transform_wrench(const geometry_msgs::msg::WrenchStamped::SharedPtr& msg, const std::string& target_frame, const std::string& source_frame, tf2_ros::Buffer& tf_buffer, const rclcpp::Time& time, rclcpp::Logger logger);
 
     droneState::State update_ground_truth_pose(const geometry_msgs::msg::PoseArray &gt_msg, const rclcpp::Time &time, const std::string &name_frame_child, tf2_ros::TransformBroadcaster &tf_broadcaster, size_t pose_ind = 0); //, Pixhawk *pixhawk_pose = nullptr);
 
