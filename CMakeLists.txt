@@ -51,6 +51,7 @@ add_library(frame_transforms src/frame_transforms.cpp)
 add_executable(pixhawk src/pixhawk.cpp)
 add_executable(gcs_background_centralized src/gcs_background_centralized.cpp)
 add_executable(tf_static_to_tf_relay src/tf_static_to_tf_relay.cpp)
+add_executable(test_node src/test.cpp)
 
 # Specify libraries to link a library or executable target against
 target_link_libraries(gcs_background_centralized
@@ -85,6 +86,7 @@ ament_target_dependencies(frame_transforms Eigen3 tf2_geometry_msgs sensor_msgs)
 ament_target_dependencies(pixhawk rclcpp geometry_msgs px4_msgs multi_drone_slung_load_interfaces) # Eigen3 std_msgs sensor_msgs cv_bridge image_transport OpenCV tf2_geometry_msgs multi_drone_slung_load_interfaces)
 ament_target_dependencies(gcs_background_centralized rclcpp geometry_msgs px4_msgs multi_drone_slung_load_interfaces) #std_msgs tf2_geometry_msgs
 ament_target_dependencies(tf_static_to_tf_relay rclcpp tf2_msgs geometry_msgs)
+ament_target_dependencies(test_node rclcpp)
 
 # Install the libraries and executables
 #install(TARGETS
@@ -110,6 +112,7 @@ install(TARGETS
   pixhawk
   gcs_background_centralized
   tf_static_to_tf_relay
+  test_node
   DESTINATION lib/${PROJECT_NAME}
 )
 
