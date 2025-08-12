@@ -259,6 +259,7 @@ void Pixhawk::clbk_vehicle_local_position(const px4_msgs::msg::VehicleLocalPosit
             utils::broadcast_tf(this->get_clock()->now(), this->name_ + "_init", this->name_ + "_gt", 
                                  this->local_state_.getPos(), utils::convert_quaternion_tf_to_eigen(this->local_state_.getAtt()), *this->tf_broadcaster_);
         }
+        // This is done in the python drone node now
         // else if(this->frame_system_ == "mocap" && !this->flag_gps_home_set_){ //Set the mocap origin if it hasn't been set yet. TODO: Ensure this doesn't cause problems for not centralized version
         //     // Set the GPS home for the mocap system
         //     utils::set_origin(this->pub_vehicle_command_, this->get_clock()->now(), this->mocap_origin_lla_[0], this->mocap_origin_lla_[1], this->mocap_origin_lla_[2]);
@@ -331,7 +332,6 @@ void Pixhawk::clbk_vehicle_global_position(const px4_msgs::msg::VehicleGlobalPos
 void Pixhawk::clbk_global_origin(const multi_drone_slung_load_interfaces::msg::GlobalPose msg) {
     this->global_origin_state_.setPos(Eigen::Vector3d(msg.global_pos.lat, msg.global_pos.lon, msg.global_pos.alt));
 
-    //TODO: JUST UPDATED THISSSSSSS HEREEEEEE
     // tf2::Quaternion is x,y,z,w; PX4 global attitude is w,x,y,z
     this->global_origin_state_.setAtt(tf2::Quaternion(msg.global_att.q[1], msg.global_att.q[2], msg.global_att.q[3], msg.global_att.q[0])); //msg.global_att.q[0], msg.global_att.q[1], msg.global_att.q[2], msg.global_att.q[3]));
 
